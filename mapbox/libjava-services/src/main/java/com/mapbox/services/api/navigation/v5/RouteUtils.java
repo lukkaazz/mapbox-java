@@ -60,35 +60,35 @@ public class RouteUtils {
    * Compute the distance between the position and the step line (the closest point), and checks
    * if it's within the off-route threshold.
    *
-   * @param position  you want to verify is on or near the route step. If using for navigation,
+   * @param position  you want to verify is on or near the routeLeg step. If using for navigation,
    *                  this would typically be the users current location.
-   * @param route     a directions route.
-   * @param stepIndex integer index for step in route.
+   * @param routeLeg     a directions routeLeg.
+   * @param stepIndex integer index for step in routeLeg.
    * @return true if the position is outside the OffRoute threshold.
    * @throws ServicesException if error occurs Mapbox API related.
    * @throws TurfException     signals that a Turf exception of some sort has occurred.
    * @since 1.3.0
    */
-  public boolean isInStep(Position position, RouteLeg route, int stepIndex) throws ServicesException, TurfException {
-    double distance = getDistanceToStep(position, route, stepIndex);
+  public boolean isInStep(Position position, RouteLeg routeLeg, int stepIndex) throws ServicesException, TurfException {
+    double distance = getDistanceToStep(position, routeLeg, stepIndex);
     return (distance <= offRouteThresholdKm);
   }
 
   /**
-   * Computes the distance between the position and the closest point in route step.
+   * Computes the distance between the position and the closest point in routeLeg step.
    *
    * @param position  you want to measure distance to from route. If using for navigation, this
    *                  would typically be the users current location.
-   * @param route     a directions route.
-   * @param stepIndex integer index for step in route.
+   * @param routeLeg     a directions routeLeg.
+   * @param stepIndex integer index for step in routeLeg.
    * @return double value giving distance in kilometers.
    * @throws ServicesException if error occurs Mapbox API related.
    * @throws TurfException     signals that a Turf exception of some sort has occurred.
    * @since 1.3.0
    */
-  public double getDistanceToStep(Position position, RouteLeg route, int stepIndex) throws ServicesException,
+  public double getDistanceToStep(Position position, RouteLeg routeLeg, int stepIndex) throws ServicesException,
     TurfException {
-    Position closestPoint = getSnapToRoute(position, route, stepIndex);
+    Position closestPoint = getSnapToRoute(position, routeLeg, stepIndex);
     return TurfMeasurement.distance(
       Point.fromCoordinates(position),
       Point.fromCoordinates(closestPoint),
@@ -99,18 +99,18 @@ public class RouteUtils {
   /**
    * Snaps given position to a {@link RouteLeg} step.
    *
-   * @param position  that you want to snap to route. If using for navigation, this would
+   * @param position  that you want to snap to routeLeg. If using for navigation, this would
    *                  typically be the users current location.
-   * @param route     that you want to snap position to.
-   * @param stepIndex integer index for step in route.
+   * @param routeLeg     that you want to snap position to.
+   * @param stepIndex integer index for step in routeLeg.
    * @return your position snapped to the route.
    * @throws ServicesException if error occurs Mapbox API related.
    * @throws TurfException     signals that a Turf exception of some sort has occurred.
    * @since 1.3.0
    */
-  public Position getSnapToRoute(Position position, RouteLeg route, int stepIndex)
+  public Position getSnapToRoute(Position position, RouteLeg routeLeg, int stepIndex)
     throws ServicesException, TurfException {
-    LegStep step = validateStep(route, stepIndex);
+    LegStep step = validateStep(routeLeg, stepIndex);
 
     // Decode the geometry
     List<Position> coords = PolylineUtils.decode(step.getGeometry(), Constants.OSRM_PRECISION_V5);
@@ -127,20 +127,20 @@ public class RouteUtils {
   }
 
   /**
-   * Method to check whether the position given is outside the route using the threshold.
+   * Method to check whether the position given is outside the routeLeg using the threshold.
    *
-   * @param position you want to verify is on or near the route. If using for navigation, this
+   * @param position you want to verify is on or near the routeLeg. If using for navigation, this
    *                 would typically be the users current location.
-   * @param route    a directions route.
-   * @return true if the position is beyond the threshold limit from the route.
+   * @param routeLeg    a directions routeLeg.
+   * @return true if the position is beyond the threshold limit from the routeLeg.
    * @throws ServicesException if error occurs Mapbox API related.
    * @throws TurfException     signals that a Turf exception of some sort has occurred.
    * @since 1.3.0
    */
-  public boolean isOffRoute(Position position, RouteLeg route) throws ServicesException, TurfException {
-    for (int stepIndex = 0; stepIndex < route.getSteps().size(); stepIndex++) {
-      if (isInStep(position, route, stepIndex)) {
-        // We aren't off-route if we're close to at least one route step
+  public boolean isOffRoute(Position position, RouteLeg routeLeg) throws ServicesException, TurfException {
+    for (int stepIndex = 0; stepIndex < routeLeg.getSteps().size(); stepIndex++) {
+      if (isInStep(position, routeLeg, stepIndex)) {
+        // We aren't off-routeLeg if we're close to at least one routeLeg step
         return false;
       }
     }
@@ -149,23 +149,23 @@ public class RouteUtils {
   }
 
   /**
-   * Get the closest route step to the given position. Ties will go to the furthest step in the
-   * route leg.
+   * Get the closest routeLeg step to the given position. Ties will go to the furthest step in the
+   * routeLeg.
    *
-   * @param position that you want to get closest route step to.
-   * @param route    a directions route.
-   * @return integer step index in route leg.
+   * @param position that you want to get closest routeLeg step to.
+   * @param routeLeg    a directions routeLeg.
+   * @return integer step index in routeLeg.
    * @throws ServicesException if error occurs Mapbox API related.
    * @throws TurfException     signals that a Turf exception of some sort has occurred.
    * @since 1.3.0
    */
-  public int getClosestStep(Position position, RouteLeg route) throws ServicesException, TurfException {
+  public int getClosestStep(Position position, RouteLeg routeLeg) throws ServicesException, TurfException {
     double minDistance = Double.MAX_VALUE;
     int closestIndex = 0;
 
     double distance;
-    for (int stepIndex = 0; stepIndex < route.getSteps().size(); stepIndex++) {
-      distance = getDistanceToStep(position, route, stepIndex);
+    for (int stepIndex = 0; stepIndex < routeLeg.getSteps().size(); stepIndex++) {
+      distance = getDistanceToStep(position, routeLeg, stepIndex);
       if (distance <= minDistance) {
         minDistance = distance;
         closestIndex = stepIndex;
