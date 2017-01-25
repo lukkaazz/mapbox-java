@@ -25,10 +25,13 @@ import java.util.ArrayList;
 import java.util.Locale;
 
 import okhttp3.HttpUrl;
+import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import retrofit2.Response;
 
+import static org.bouncycastle.crypto.tls.ConnectionEnd.client;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -36,6 +39,9 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class MapboxDirectionsTest {
+
+  public static final String DIRECTIONS_V5_FIXTURE = "src/test/fixtures/directions_v5.json";
+  public static final String DIRECTIONS_V5_PRECISION6_FIXTURE = "src/test/fixtures/directions_v5_precision_6.json";
 
   private static final double DELTA = 1E-10;
 
@@ -48,9 +54,24 @@ public class MapboxDirectionsTest {
   public void setUp() throws IOException {
     server = new MockWebServer();
 
-    byte[] content = Files.readAllBytes(Paths.get("src/test/fixtures/directions_v5.json"));
-    String body = new String(content, Charset.defaultCharset());
-    server.enqueue(new MockResponse().setBody(body));
+    server.setDispatcher(new Dispatcher() {
+
+      @Override
+      public MockResponse dispatch(RecordedRequest request) throws InterruptedException {
+        // Switch response on geometry parameter (only false supported, so nice and simple)
+        String resource = DIRECTIONS_V5_FIXTURE;
+        if (request.getPath().contains("geometries=polyline6")) {
+          resource = DIRECTIONS_V5_PRECISION6_FIXTURE;
+        }
+
+        try {
+          String body = new String(Files.readAllBytes(Paths.get(resource)), Charset.forName("utf-8"));
+          return new MockResponse().setBody(body);
+        } catch (IOException ioException) {
+          throw new RuntimeException(ioException);
+        }
+      }
+    });
 
     server.start();
 
@@ -125,7 +146,25 @@ public class MapboxDirectionsTest {
     DirectionsRoute route = response.body().getRoutes().get(0);
     assertEquals(route.getDistance(), 77274.3, DELTA);
     assertEquals(route.getDuration(), 3441.8, DELTA);
-    assertTrue(route.getGeometry().startsWith("kqreFhodjVhh"));
+    assertTrue(route.getGeometry().startsWith("kqreFhodjV"));
+    assertEquals(route.getLegs().size(), 1);
+  }
+
+  @Test
+  public void testGeometryPolyline6() throws ServicesException, IOException {
+    MapboxDirections client = new MapboxDirections.Builder()
+      .setAccessToken("pk.XXX")
+      .setCoordinates(positions)
+      .setGeometry(DirectionsCriteria.GEOMETRY_POLYLINE6)
+      .setProfile(DirectionsCriteria.PROFILE_DRIVING)
+      .setBaseUrl(mockUrl.toString())
+      .build();
+    Response<DirectionsResponse> response = client.executeCall();
+
+    DirectionsRoute route = response.body().getRoutes().get(0);
+    assertEquals(route.getDistance(), 77255.1, DELTA);
+    assertEquals(route.getDuration(), 3935, DELTA);
+    assertTrue(route.getGeometry().startsWith("_wbagAxavn"));
     assertEquals(route.getLegs().size(), 1);
   }
 
@@ -317,5 +356,4 @@ public class MapboxDirectionsTest {
       .build();
     assertTrue(service.executeCall().raw().request().header("User-Agent").contains("APP"));
   }
-
 }

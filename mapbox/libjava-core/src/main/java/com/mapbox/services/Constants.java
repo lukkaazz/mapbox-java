@@ -21,6 +21,7 @@ public class Constants {
   public static final int GOOGLE_PRECISION = 5;
   public static final int OSRM_PRECISION_V4 = 6;
   public static final int OSRM_PRECISION_V5 = 5;
+  public static final int OSRM_PRECISION_6_V5 = 6;
 
   /**
    * Default user for services

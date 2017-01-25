@@ -2,7 +2,9 @@ package com.mapbox.services.api.navigation.v5;
 
 import com.mapbox.services.Constants;
 import com.mapbox.services.api.ServicesException;
+import com.mapbox.services.api.directions.v5.models.DirectionsRoute;
 import com.mapbox.services.commons.geojson.Feature;
+import com.mapbox.services.commons.geojson.LineString;
 import com.mapbox.services.commons.geojson.Point;
 import com.mapbox.services.commons.models.Position;
 import com.mapbox.services.api.utils.turf.TurfConstants;
@@ -62,7 +64,7 @@ public class RouteUtils {
    *
    * @param position  you want to verify is on or near the routeLeg step. If using for navigation,
    *                  this would typically be the users current location.
-   * @param routeLeg     a directions routeLeg.
+   * @param routeLeg  a directions routeLeg.
    * @param stepIndex integer index for step in routeLeg.
    * @return true if the position is outside the OffRoute threshold.
    * @throws ServicesException if error occurs Mapbox API related.
@@ -79,7 +81,7 @@ public class RouteUtils {
    *
    * @param position  you want to measure distance to from route. If using for navigation, this
    *                  would typically be the users current location.
-   * @param routeLeg     a directions routeLeg.
+   * @param routeLeg  a directions routeLeg.
    * @param stepIndex integer index for step in routeLeg.
    * @return double value giving distance in kilometers.
    * @throws ServicesException if error occurs Mapbox API related.
@@ -97,11 +99,59 @@ public class RouteUtils {
   }
 
   /**
+   * Measures the distance from a position to the end of the route step. The position provided is snapped to the route
+   * before distance is calculated.
+   *
+   * @param position  you want to measure distance to from route. If using for navigation, this would typically be the
+   *                  users current location.
+   * @param routeLeg  a directions route.
+   * @param stepIndex integer index for step in route.
+   * @return double value giving distance in kilometers.
+   * @throws ServicesException if error occurs Mapbox API related.
+   * @throws TurfException     signals that a Turf exception of some sort has occurred.
+   * @since 2.0.0
+   */
+  public double getDistanceToNextStep(Position position, RouteLeg routeLeg, int stepIndex) throws ServicesException,
+    TurfException {
+    LegStep step = validateStep(routeLeg, stepIndex);
+
+    // Decode the geometry
+    List<Position> coords = PolylineUtils.decode(step.getGeometry(), Constants.OSRM_PRECISION_6_V5);
+
+    LineString slicedLine = TurfMisc.lineSlice(
+      Point.fromCoordinates(position),
+      Point.fromCoordinates(coords.get(coords.size() - 1)),
+      LineString.fromCoordinates(coords)
+    );
+    return TurfMeasurement.lineDistance(slicedLine, TurfConstants.UNIT_DEFAULT);
+  }
+
+  /**
+   * @param position you want to measure distance to from route. If using for navigation, this would typically be the
+   *                 users current location.
+   * @param route    a {@link DirectionsRoute}.
+   * @return double value giving distance in kilometers.
+   * @throws TurfException signals that a Turf exception of some sort has occurred.
+   * @since 2.0.0
+   */
+  public double getDistanceToEndOfRoute(Position position, DirectionsRoute route) throws TurfException {
+    // Decode the geometry
+    List<Position> coords = PolylineUtils.decode(route.getGeometry(), Constants.OSRM_PRECISION_6_V5);
+
+    LineString slicedLine = TurfMisc.lineSlice(
+      Point.fromCoordinates(position),
+      Point.fromCoordinates(coords.get(coords.size() - 1)),
+      LineString.fromCoordinates(coords)
+    );
+    return TurfMeasurement.lineDistance(slicedLine, TurfConstants.UNIT_DEFAULT);
+  }
+
+  /**
    * Snaps given position to a {@link RouteLeg} step.
    *
    * @param position  that you want to snap to routeLeg. If using for navigation, this would
    *                  typically be the users current location.
-   * @param routeLeg     that you want to snap position to.
+   * @param routeLeg  that you want to snap position to.
    * @param stepIndex integer index for step in routeLeg.
    * @return your position snapped to the route.
    * @throws ServicesException if error occurs Mapbox API related.
@@ -131,7 +181,7 @@ public class RouteUtils {
    *
    * @param position you want to verify is on or near the routeLeg. If using for navigation, this
    *                 would typically be the users current location.
-   * @param routeLeg    a directions routeLeg.
+   * @param routeLeg a directions routeLeg.
    * @return true if the position is beyond the threshold limit from the routeLeg.
    * @throws ServicesException if error occurs Mapbox API related.
    * @throws TurfException     signals that a Turf exception of some sort has occurred.
@@ -153,7 +203,7 @@ public class RouteUtils {
    * routeLeg.
    *
    * @param position that you want to get closest routeLeg step to.
-   * @param routeLeg    a directions routeLeg.
+   * @param routeLeg a directions routeLeg.
    * @return integer step index in routeLeg.
    * @throws ServicesException if error occurs Mapbox API related.
    * @throws TurfException     signals that a Turf exception of some sort has occurred.
